@@ -32,7 +32,7 @@
         .card.fuel { border-left: 5px solid var(--fuel); }
         .nav-btn { display: block; background: #333; color: white; text-align: center; padding: 8px; border-radius: 5px; text-decoration: none; margin-top: 8px; }
 
-        @media (min-width: 768px) { #main { flex-direction: row; } #map { flex: 2; height: auto; } #list { flex: 1; max-width: 350px; } }
+        @media (min-width: 768px) { #main { flex-direction: row; } #map { flex: 2; height: auto; } #list { flex: 1; max-width: 350px; } 
     </style>
 </head>
 <body>
@@ -57,79 +57,91 @@
 <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
 
 <script>
-    // 1. Data with Categories
-    const allStops = [
-        { name: "Genting Sempah R&R", lat: 3.3508, lng: 101.7836, cat: "food", desc: "McD, Starbucks, Food Court" },
-        { name: "Shell Genting Sempah", lat: 3.3500, lng: 101.7840, cat: "fuel", desc: "Petrol, ATM, Snacks" },
-        { name: "Lemang To'ki", lat: 3.5235, lng: 101.9164, cat: "food", desc: "Famous Bentong Lemang" },
-        { name: "Petronas Bentong", lat: 3.5200, lng: 101.9100, cat: "fuel", desc: "Fuel & NGV" },
-        { name: "Temerloh R&R", lat: 3.4475, lng: 102.4173, cat: "food", desc: "Local Pahang delicacies" }
-    ];
-
-    let currentCategory = "all";
-    let activeRouteCoords = [];
-
+// 1. Initialize Map
     var map = L.map('map').setView([3.3, 101.9], 9);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-    var markersLayer = L.layerGroup().addTo(map);
 
+    // 2. Setup the Routing Control
     var control = L.Routing.control({
-        waypoints: [L.latLng(3.139, 101.686), L.latLng(3.448, 102.417)],
+        // Start with NO fixed waypoints so the user can type their own
+        waypoints: [
+            null, // Start point (waiting for input)
+            null  // End point (waiting for input)
+        ],
         routeWhileDragging: true,
-        geocoder: L.Control.Geocoder.nominatim()
+        // This line is key: it tells the boxes to use the "Nominatim" search engine
+        geocoder: L.Control.Geocoder.nominatim(),
+        router: L.Routing.osrmv1({
+            serviceUrl: 'https://router.project-osrm.org/route/v1'
+        })
     }).addTo(map);
 
-    // Update list when route changes
+    // 3. Add Locate Me
+    L.control.locate({ position: 'topleft', flyTo: true }).addTo(map);
+
+    // 4. Handle "Route Found" to update your stopover list
     control.on('routesfound', function(e) {
-        activeRouteCoords = e.routes[0].coordinates;
-        filterAndDisplay();
+        var route = e.routes[0];
+        console.log("New route found! Distance: " + route.summary.totalDistance);
+        
+        // This function (from our previous code) filters your stops
+        filterAndDisplay(route.coordinates); 
     });
 
-    // Handle Filter Button Clicks
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelector('.filter-btn.active').classList.remove('active');
-            btn.classList.add('active');
-            currentCategory = btn.getAttribute('data-cat');
-            filterAndDisplay();
-        });
-    });
-
-    function filterAndDisplay() {
-        if (!activeRouteCoords.length) return;
+    // Helper to filter stops (same logic as before)
+    function filterAndDisplay(routeCoords) {
+        const container = document.getElementById('places-container');
+        container.innerHTML = ""; 
 
         const filtered = allStops.filter(stop => {
-            // Check Category
             const matchesCat = (currentCategory === "all" || stop.cat === currentCategory);
-            
-            // Check Distance to Route (~5km)
-            const matchesRoute = activeRouteCoords.some(coord => {
+            const matchesRoute = routeCoords.some(coord => {
                 let dist = Math.sqrt(Math.pow(coord.lat - stop.lat, 2) + Math.pow(coord.lng - stop.lng, 2));
                 return dist < 0.05; 
             });
-
             return matchesCat && matchesRoute;
         });
 
-        updateUI(filtered);
+        // ... code to draw cards ...
     }
+</script>
+    <style>
+    /* Styling for the Swap Button */
+    .swap-container {
+        position: absolute;
+        top: 80px; /* Position it near the routing box */
+        right: 10px;
+        z-index: 1000;
+    }
+    .swap-btn {
+        background: white;
+        border: 2px solid rgba(0,0,0,0.2);
+        border-radius: 4px;
+        padding: 5px 10px;
+        cursor: pointer;
+        font-weight: bold;
+        box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+    }
+    .swap-btn:hover { background: #f4f4f4; }
+</style>
 
-    function updateUI(stops) {
-        const container = document.getElementById('places-container');
-        container.innerHTML = ""; 
-        markersLayer.clearLayers();
+<div class="swap-container">
+    <button class="swap-btn" onclick="swapWaypoints()">⇅ Swap</button>
+</div>
 
-        stops.forEach(stop => {
-            const card = document.createElement('div');
-            card.className = `card ${stop.cat}`;
-            card.innerHTML = `
-                <h3>${stop.cat === 'food' ? '🍴' : '⛽'} ${stop.name}</h3>
-                <p>${stop.desc}</p>
-                <a href="https://www.google.com/maps/dir/?api=1&destination=${stop.lat},${stop.lng}" target="_blank" class="nav-btn">NAVIGATE</a>
-            `;
-            container.appendChild(card);
-            L.marker([stop.lat, stop.lng]).addTo(markersLayer).bindPopup(stop.name);
-        });
+<script>
+    function swapWaypoints() {
+        // Get the current waypoints from the routing control
+        var currentWaypoints = control.getWaypoints();
+        
+        // Swap the coordinates
+        var newWaypoints = [
+            currentWaypoints[1].latLng, // Old destination becomes new start
+            currentWaypoints[0].latLng  // Old start becomes new destination
+        ];
+
+        // Set the new waypoints back to the control
+        control.setWaypoints(newWaypoints);
     }
 </script>
 </body>
