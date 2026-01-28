@@ -3,111 +3,134 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>KL to Temerloh Stopovers</title>
+    <title>Smart Travel Planner</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.locatecontrol/dist/L.Control.Locate.min.css" />
-    <script src="https://cdn.jsdelivr.net/npm/leaflet.locatecontrol/dist/L.Control.Locate.min.js"></script>
-
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
+    
     <style>
-        :root { --primary: #2c3e50; --accent: #e67e22; --bg: #f8f9fa; }
-        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; flex-direction: column; height: 100vh; background: var(--bg); }
+        :root { --primary: #2c3e50; --food: #e67e22; --fuel: #3498db; }
+        body { margin: 0; font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; }
+        header { background: var(--primary); color: white; padding: 12px; text-align: center; font-weight: bold; }
         
-        header { background: var(--primary); color: white; padding: 15px; text-align: center; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        
-        #main-container { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
-        #map { height: 50vh; width: 100%; z-index: 1; }
-        #list { flex: 1; overflow-y: auto; padding: 15px; border-top: 2px solid #ddd; }
+        #main { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+        #map { height: 45vh; width: 100%; }
+        #list { flex: 1; overflow-y: auto; padding: 15px; background: white; }
 
-        /* Desktop Layout */
-        @media (min-width: 768px) {
-            #main-container { flex-direction: row; }
-            #map { height: auto; flex: 2; }
-            #list { flex: 1; max-width: 380px; border-top: none; border-left: 1px solid #ddd; }
+        /* Filter Buttons Styling */
+        .filter-bar { display: flex; gap: 10px; margin-bottom: 15px; }
+        .filter-btn { 
+            flex: 1; padding: 8px; border: none; border-radius: 20px; 
+            cursor: pointer; font-weight: bold; font-size: 12px; background: #eee; 
         }
+        .filter-btn.active[data-cat="all"] { background: var(--primary); color: white; }
+        .filter-btn.active[data-cat="food"] { background: var(--food); color: white; }
+        .filter-btn.active[data-cat="fuel"] { background: var(--fuel); color: white; }
 
-        .card { background: white; padding: 15px; margin-bottom: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); transition: 0.2s; }
-        .card:active { transform: scale(0.98); }
-        .card h3 { margin: 0 0 5px 0; font-size: 18px; color: var(--primary); }
-        .card p { margin: 0 0 12px 0; font-size: 14px; color: #666; line-height: 1.4; }
-        
-        .nav-btn { 
-            display: inline-block; background: var(--accent); color: white; 
-            text-decoration: none; padding: 10px 18px; border-radius: 8px; 
-            font-size: 14px; font-weight: bold; text-align: center; width: 100%; box-sizing: border-box;
-        }
+        .card { border: 1px solid #eee; padding: 12px; border-radius: 10px; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .card.food { border-left: 5px solid var(--food); }
+        .card.fuel { border-left: 5px solid var(--fuel); }
+        .nav-btn { display: block; background: #333; color: white; text-align: center; padding: 8px; border-radius: 5px; text-decoration: none; margin-top: 8px; }
+
+        @media (min-width: 768px) { #main { flex-direction: row; } #map { flex: 2; height: auto; } #list { flex: 1; max-width: 350px; } }
     </style>
 </head>
 <body>
 
-<header>KL ➜ Temerloh Travel Guide</header>
+<header>Smart Travel Planner</header>
 
-<div id="main-container">
+<div id="main">
     <div id="map"></div>
     <div id="list">
-        <h2 style="font-size: 20px; margin-top: 0;">Top Stopovers</h2>
-        
-        <div class="card">
-            <h3>Genting Sempah R&R</h3>
-            <p>KM 21 Karak Highway. Clean toilets, Starbucks, McD, and fuel.</p>
-            <a href="#" class="nav-btn" onclick="navigate(3.3508, 101.7836)">NAVIGATE</a>
+        <div class="filter-bar">
+            <button class="filter-btn active" data-cat="all">ALL</button>
+            <button class="filter-btn" data-cat="food">🍴 FOOD</button>
+            <button class="filter-btn" data-cat="fuel">⛽ PETROL</button>
         </div>
 
-        <div class="card">
-            <h3>Lemang To'ki (Bentong)</h3>
-            <p>Famous for wood-fired Lemang and Ayam Bakar. A must-detour!</p>
-            <a href="#" class="nav-btn" onclick="navigate(3.5235, 101.9164)">NAVIGATE</a>
-        </div>
-
-        <div class="card">
-            <h3>Restoran Gobang Maju</h3>
-            <p>The legendary Ikan Patin Tempoyak spot in Temerloh town.</p>
-            <a href="#" class="nav-btn" onclick="navigate(3.4475, 102.4173)">NAVIGATE</a>
-        </div>
+        <div id="places-container"></div>
     </div>
 </div>
 
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
+<script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+
 <script>
-    // 1. Initialize Map
-    var map = L.map('map', { zoomControl: false }).setView([3.35, 101.95], 10);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-    L.control.zoom({ position: 'bottomright' }).addTo(map);
-
-    // 2. Add Locate Me Button
-    L.control.locate({
-        position: 'topleft',
-        keepCurrentZoomLevel: true,
-        flyTo: true
-    }).addTo(map);
-
-    // 3. Add Markers
-    var stops = [
-        { name: "Genting Sempah", lat: 3.3508, lng: 101.7836 },
-        { name: "Lemang To'ki", lat: 3.5235, lng: 101.9164 },
-        { name: "Temerloh (Gobang Maju)", lat: 3.4475, lng: 102.4173 }
+    // 1. Data with Categories
+    const allStops = [
+        { name: "Genting Sempah R&R", lat: 3.3508, lng: 101.7836, cat: "food", desc: "McD, Starbucks, Food Court" },
+        { name: "Shell Genting Sempah", lat: 3.3500, lng: 101.7840, cat: "fuel", desc: "Petrol, ATM, Snacks" },
+        { name: "Lemang To'ki", lat: 3.5235, lng: 101.9164, cat: "food", desc: "Famous Bentong Lemang" },
+        { name: "Petronas Bentong", lat: 3.5200, lng: 101.9100, cat: "fuel", desc: "Fuel & NGV" },
+        { name: "Temerloh R&R", lat: 3.4475, lng: 102.4173, cat: "food", desc: "Local Pahang delicacies" }
     ];
 
-    stops.forEach(function(stop) {
-        L.marker([stop.lat, stop.lng]).addTo(map).bindPopup("<b>" + stop.name + "</b>");
+    let currentCategory = "all";
+    let activeRouteCoords = [];
+
+    var map = L.map('map').setView([3.3, 101.9], 9);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    var markersLayer = L.layerGroup().addTo(map);
+
+    var control = L.Routing.control({
+        waypoints: [L.latLng(3.139, 101.686), L.latLng(3.448, 102.417)],
+        routeWhileDragging: true,
+        geocoder: L.Control.Geocoder.nominatim()
+    }).addTo(map);
+
+    // Update list when route changes
+    control.on('routesfound', function(e) {
+        activeRouteCoords = e.routes[0].coordinates;
+        filterAndDisplay();
     });
 
-    // 4. Smart Navigation Logic
-    function navigate(lat, lng) {
-        const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-        const isAndroid = /Android/i.test(navigator.userAgent);
-        
-        let url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
-        
-        if (isIOS) {
-            url = `maps://maps.apple.com/?daddr=${lat},${lng}`;
-        } else if (isAndroid) {
-            url = `google.navigation:q=${lat},${lng}`;
-        }
-        
-        window.open(url, '_blank');
+    // Handle Filter Button Clicks
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelector('.filter-btn.active').classList.remove('active');
+            btn.classList.add('active');
+            currentCategory = btn.getAttribute('data-cat');
+            filterAndDisplay();
+        });
+    });
+
+    function filterAndDisplay() {
+        if (!activeRouteCoords.length) return;
+
+        const filtered = allStops.filter(stop => {
+            // Check Category
+            const matchesCat = (currentCategory === "all" || stop.cat === currentCategory);
+            
+            // Check Distance to Route (~5km)
+            const matchesRoute = activeRouteCoords.some(coord => {
+                let dist = Math.sqrt(Math.pow(coord.lat - stop.lat, 2) + Math.pow(coord.lng - stop.lng, 2));
+                return dist < 0.05; 
+            });
+
+            return matchesCat && matchesRoute;
+        });
+
+        updateUI(filtered);
+    }
+
+    function updateUI(stops) {
+        const container = document.getElementById('places-container');
+        container.innerHTML = ""; 
+        markersLayer.clearLayers();
+
+        stops.forEach(stop => {
+            const card = document.createElement('div');
+            card.className = `card ${stop.cat}`;
+            card.innerHTML = `
+                <h3>${stop.cat === 'food' ? '🍴' : '⛽'} ${stop.name}</h3>
+                <p>${stop.desc}</p>
+                <a href="https://www.google.com/maps/dir/?api=1&destination=${stop.lat},${stop.lng}" target="_blank" class="nav-btn">NAVIGATE</a>
+            `;
+            container.appendChild(card);
+            L.marker([stop.lat, stop.lng]).addTo(markersLayer).bindPopup(stop.name);
+        });
     }
 </script>
-
 </body>
 </html>
