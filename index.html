@@ -4,133 +4,138 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Road Trip Discoverer</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/@geoapify/geocoder-autocomplete@^1/styles/minimal.css">
+    <script src="https://unpkg.com/@geoapify/geocoder-autocomplete@^1/dist/index.bundle.min.js"></script>
+
     <style>
-        :root { --bg: #ffffff; --text: #1a1a1a; --accent: #007aff; --secondary: #f2f2f7; --warn: #ff9500; --danger: #ff3b30; }
-        body { margin: 0; font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        :root { --bg: #ffffff; --text: #1a1a1a; --accent: #007aff; --secondary: #f2f2f7; --danger: #ff3b30; }
+        body { margin: 0; font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); }
+        .container { max-width: 500px; margin: 0 auto; padding: 20px; }
 
-        /* Inputs */
-        .search-section { margin-bottom: 30px; border-bottom: 1px solid #eee; padding-bottom: 20px; }
-        input { width: 100%; padding: 14px; border: 1px solid #ddd; border-radius: 12px; margin-bottom: 10px; box-sizing: border-box; font-size: 1rem; background: var(--secondary); border: none; }
-
-        /* Weather & Packing Widget */
-        .dashboard { background: var(--secondary); padding: 20px; border-radius: 20px; margin-bottom: 30px; }
-        .weather-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .temp-val { font-size: 2.5rem; font-weight: 700; }
+        /* Modern Input Styling */
+        .search-section { margin-bottom: 30px; }
+        .input-label { font-size: 0.8rem; font-weight: bold; color: #888; margin-bottom: 5px; display: block; }
+        .autocomplete-container { margin-bottom: 15px; position: relative; }
         
-        .packing-box { background: #fff; padding: 15px; border-radius: 12px; margin-top: 15px; border-left: 4px solid var(--accent); }
-        .packing-box.rain-alert { border-left-color: var(--danger); }
-        .packing-box h4 { margin: 0 0 8px 0; font-size: 0.9rem; text-transform: uppercase; color: #888; }
-        .packing-list { margin: 0; padding-left: 20px; font-size: 0.9rem; }
+        /* The Travel Button */
+        .travel-btn { 
+            width: 100%; padding: 16px; background: var(--accent); color: white; 
+            border: none; border-radius: 12px; font-size: 1.1rem; font-weight: bold; 
+            cursor: pointer; transition: transform 0.2s, background 0.2s;
+        }
+        .travel-btn:hover { background: #0056b3; }
+        .travel-btn:active { transform: scale(0.98); }
 
-        /* Timeline */
-        .timeline-item { position: relative; padding-left: 30px; border-left: 2px solid var(--secondary); margin-bottom: 35px; }
+        /* Results Dashboard */
+        .dashboard { background: var(--secondary); padding: 20px; border-radius: 20px; margin-top: 30px; display: none; }
+        .weather-row { display: flex; justify-content: space-between; align-items: center; }
+        .temp { font-size: 2.5rem; font-weight: 800; }
+        
+        .packing-list { background: white; padding: 15px; border-radius: 12px; margin-top: 15px; border-left: 4px solid var(--accent); }
+        .packing-list.rain { border-left-color: var(--danger); }
+
+        /* Itinerary Timeline */
+        .timeline-item { position: relative; padding-left: 30px; border-left: 2px solid var(--secondary); margin-top: 30px; }
         .timeline-item::before { content: ''; position: absolute; left: -6px; top: 5px; width: 10px; height: 10px; background: var(--accent); border-radius: 50%; }
-        .category { font-size: 10px; font-weight: 800; color: var(--accent); letter-spacing: 1px; text-transform: uppercase; }
-        .stop-name { font-size: 1.2rem; font-weight: 700; margin: 4px 0; }
-        .stop-desc { font-size: 0.95rem; color: #555; margin: 0; }
-        .detour { font-size: 0.85rem; color: #999; margin-top: 6px; font-weight: 600; }
+        .stop-name { font-weight: bold; font-size: 1.1rem; margin: 0; }
+        .stop-desc { color: #555; font-size: 0.9rem; margin: 5px 0; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="search-section">
-        <h1 id="main-title">Start Your Journey</h1>
-        <input type="text" id="originInput" placeholder="Current Location (e.g., Kuala Lumpur)">
-        <input type="text" id="destInput" placeholder="Destination (e.g., Kuantan)" onchange="updateTrip()">
+        <h1>Travel Smarter</h1>
+        
+        <label class="input-label">FROM</label>
+        <div id="origin-autocomplete" class="autocomplete-container"></div>
+        
+        <label class="input-label">TO</label>
+        <div id="destination-autocomplete" class="autocomplete-container"></div>
+        
+        <button class="travel-btn" onclick="startJourney()">Travel!</button>
     </div>
 
-    <div id="trip-dashboard" style="display: none;">
-        <div class="dashboard">
-            <div class="weather-top">
-                <div>
-                    <h2 id="display-dest" style="margin:0;">Kuantan</h2>
-                    <p id="weather-desc" style="margin:0; color: #666;">Fetch weather...</p>
-                </div>
-                <div class="temp-val" id="temp-display">--°C</div>
+    <div id="results" class="dashboard">
+        <div class="weather-row">
+            <div>
+                <h2 id="dest-name" style="margin:0">Kuantan</h2>
+                <p id="weather-text" style="margin:0; color:#666">Sunny</p>
             </div>
-            
-            <div id="packing-container" class="packing-box">
-                <h4>🧳 Smart Packing List</h4>
-                <ul class="packing-list" id="packing-list-items">
-                    </ul>
-            </div>
+            <div class="temp" id="temp-val">27°C</div>
         </div>
 
-        <h2 style="font-size: 1.5rem;">Discovery Timeline</h2>
+        <div id="packing-card" class="packing-list">
+            <h4 style="margin:0 0 10px 0; font-size:0.8rem; color:#888;">SMART PACKING</h4>
+            <ul id="packing-items" style="margin:0; padding-left:20px; font-size:0.9rem;"></ul>
+        </div>
+
+        <h3 style="margin-top:30px">Discovery Itinerary</h3>
         <div id="itinerary-list"></div>
     </div>
 </div>
 
 <script>
-    const apiKey = "YOUR_OPENWEATHER_API_KEY"; // Replace with your free key from openweathermap.org
+    const GEO_KEY = "YOUR_FREE_GEOAPIFY_KEY"; // Get yours at myprojects.geoapify.com
+    let selectedDestination = "";
 
-    const discoveryGems = [
-        { name: "Genting Sempah Lookout", cat: "Nature", desc: "Catch the mountain mist. Great coffee stop.", detour: "On Route" },
-        { name: "Lemang To'ki Bentong", cat: "Foodie", desc: "Famous charcoal-fired Lemang & Rendang.", detour: "10 mins off highway" },
-        { name: "Elephant Sanctuary Kuala Gandah", cat: "Wildlife", desc: "Rescue center for elephants. Family friendly.", detour: "15 mins off highway" },
-        { name: "Patin Tempoyak Temerloh", cat: "Foodie", desc: "Pahang's famous fermented durian fish broth.", detour: "5 mins off highway" }
-    ];
+    // 1. Initialize Autocomplete for Malaysia
+    const originAC = new autocomplete.GeocoderAutocomplete(
+        document.getElementById("origin-autocomplete"), GEO_KEY, 
+        { placeholder: "Current location...", filter: { countrycode: ["my"] } }
+    );
 
-    async function updateTrip() {
-        const dest = document.getElementById('destInput').value;
-        if (!dest) return;
+    const destAC = new autocomplete.GeocoderAutocomplete(
+        document.getElementById("destination-autocomplete"), GEO_KEY, 
+        { placeholder: "Where are we going?", filter: { countrycode: ["my"] } }
+    );
 
-        document.getElementById('trip-dashboard').style.display = 'block';
-        document.getElementById('display-dest').innerText = dest;
-        document.getElementById('main-title').innerText = "Trip to " + dest;
+    // Save destination when selected
+    destAC.on('select', (location) => {
+        selectedDestination = location.properties.city || location.properties.name;
+    });
 
-        fetchWeather(dest);
-        renderItinerary();
-    }
-
-    async function fetchWeather(city) {
-        try {
-            // Using a sample for demo, replace URL with real API call when key is ready:
-            // const url = `https://api.openweathermap.org/data/2.5/forecast?q=${city}&units=metric&appid=${apiKey}`;
-            
-            // Mock Data for demonstration
-            const mockData = {
-                temp: 27,
-                desc: "Cloudy with Light Rain",
-                willRain: true // In a real API, you'd check if 'Rain' exists in forecast array
-            };
-
-            document.getElementById('temp-display').innerText = `${mockData.temp}°C`;
-            document.getElementById('weather-desc').innerText = mockData.desc;
-
-            updatePackingList(mockData.willRain);
-        } catch (error) {
-            console.error("Weather fetch failed", error);
-        }
-    }
-
-    function updatePackingList(isRaining) {
-        const list = document.getElementById('packing-list-items');
-        const box = document.getElementById('packing-container');
-        
-        let items = ["Light cotton clothing", "Power bank", "Sunscreen"];
-        
-        if (isRaining) {
-            box.classList.add('rain-alert');
-            items.push("<strong>Umbrella or Raincoat (Rain Forecasted)</strong>");
-            items.push("Waterproof bag for phone");
-        } else {
-            box.classList.remove('rain-alert');
+    // 2. The "Travel!" Button Logic
+    function startJourney() {
+        if (!selectedDestination) {
+            alert("Please select a destination from the list!");
+            return;
         }
 
-        list.innerHTML = items.map(i => `<li>${i}</li>`).join('');
+        document.getElementById('results').style.display = 'block';
+        document.getElementById('dest-name').innerText = selectedDestination;
+        
+        // In real app, call OpenWeather here. For now, we simulate:
+        const mockWeather = { temp: 28, isRainy: true }; 
+        updateDashboard(mockWeather);
     }
 
-    function renderItinerary() {
-        const list = document.getElementById('itinerary-list');
-        list.innerHTML = discoveryGems.map(stop => `
+    function updateDashboard(weather) {
+        document.getElementById('temp-val').innerText = `${weather.temp}°C`;
+        document.getElementById('weather-text').innerText = weather.isRainy ? "Showers Likely" : "Clear Skies";
+
+        // Packing Assistant
+        const pList = document.getElementById('packing-items');
+        const pCard = document.getElementById('packing-card');
+        let items = ["Light clothing", "Power bank"];
+        
+        if (weather.isRainy) {
+            pCard.classList.add('rain');
+            items.push("<strong>Umbrella / Poncho</strong>", "Waterproof shoes");
+        }
+        pList.innerHTML = items.map(i => `<li>${i}</li>`).join('');
+
+        // Itinerary (Static Example)
+        const itinerary = [
+            { name: "Lemang To'ki", desc: "Legendary stop for bamboo rice.", detour: "10m" },
+            { name: "Patin Tempoyak Pak Akob", desc: "Best durian fish curry in Pahang.", detour: "5m" }
+        ];
+        document.getElementById('itinerary-list').innerHTML = itinerary.map(s => `
             <div class="timeline-item">
-                <div class="category">${stop.cat}</div>
-                <div class="stop-name">${stop.name}</div>
-                <p class="stop-desc">${stop.desc}</p>
-                <div class="detour">🕒 ${stop.detour}</div>
+                <p class="stop-name">${s.name}</p>
+                <p class="stop-desc">${s.desc}</p>
+                <small style="color:#aaa">🕒 ${s.detour} detour</small>
             </div>
         `).join('');
     }
