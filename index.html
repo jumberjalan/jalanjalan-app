@@ -13,143 +13,139 @@
         body { margin: 0; font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 20px; }
         .container { max-width: 500px; margin: 0 auto; }
 
-        /* Ensuring autocomplete boxes are visible and styled */
-        .autocomplete-container { margin-bottom: 20px; position: relative; min-height: 45px; }
+        .search-section { margin-bottom: 30px; }
         .input-label { font-size: 0.8rem; font-weight: bold; color: #888; margin-bottom: 5px; display: block; }
+        
+        /* This ensures the containers are visible and ready for the library */
+        .autocomplete-container { 
+            margin-bottom: 20px; 
+            position: relative; 
+            min-height: 40px; 
+            border: 1px solid #ddd; 
+            border-radius: 8px;
+        }
         
         .travel-btn { 
             width: 100%; padding: 16px; background: var(--accent); color: white; 
             border: none; border-radius: 12px; font-size: 1.1rem; font-weight: bold; 
-            cursor: pointer; margin-top: 10px;
+            cursor: pointer; transition: 0.2s;
         }
+        .travel-btn:hover { background: #0056b3; }
 
         .dashboard { background: var(--secondary); padding: 25px; border-radius: 20px; margin-top: 30px; display: none; }
-        .temp-big { font-size: 3rem; font-weight: 800; margin: 0; }
-        .packing-card { background: white; padding: 15px; border-radius: 12px; margin-top: 20px; border-left: 5px solid var(--accent); }
-        .packing-card.rain-alert { border-left-color: var(--danger); }
-        
-        .timeline-item { position: relative; padding-left: 30px; border-left: 2px solid #ddd; margin-top: 25px; }
-        .timeline-item::before { content: ''; position: absolute; left: -6px; top: 5px; width: 10px; height: 10px; background: var(--accent); border-radius: 50%; }
+        .temp { font-size: 3rem; font-weight: 800; margin: 0; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>Travel Smarter</h1>
-    
-    <label class="input-label">STARTING FROM</label>
-    <div id="origin-autocomplete" class="autocomplete-container"></div>
-    
-    <label class="input-label">DESTINATION</label>
-    <div id="destination-autocomplete" class="autocomplete-container"></div>
-    
-    <button class="travel-btn" onclick="startJourney()">Travel!</button>
+    <div class="search-section">
+        <h1>Travel Smarter</h1>
+        
+        <label class="input-label">FROM</label>
+        <div id="origin-autocomplete" class="autocomplete-container"></div>
+        
+        <label class="input-label">TO</label>
+        <div id="destination-autocomplete" class="autocomplete-container"></div>
+        
+        <button class="travel-btn" onclick="startJourney()">Travel!</button>
+    </div>
 
     <div id="results" class="dashboard">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
             <div>
-                <h2 id="display-name" style="margin:0">Kuantan</h2>
-                <p id="weather-desc" style="margin:0; color:#666">Checking skies...</p>
+                <h2 id="dest-name" style="margin:0">Destination</h2>
+                <p id="weather-text" style="margin:0; color:#666">Checking skies...</p>
             </div>
-            <div class="temp-big" id="temp-display">--°</div>
+            <div class="temp" id="temp-val">--°C</div>
         </div>
 
-        <div id="packing-card" class="packing-card">
+        <div id="packing-card" style="background:white; padding:15px; border-radius:12px; margin-top:20px;">
             <h4 style="margin:0 0 10px 0; color:#888;">SMART PACKING</h4>
-            <ul id="packing-list" style="margin:0; padding-left:20px; font-size:0.9rem;"></ul>
+            <ul id="packing-items" style="margin:0; padding-left:20px; font-size:0.9rem;"></ul>
         </div>
 
-        <h3 style="margin-top:30px">Discovery Stops</h3>
+        <h3 style="margin-top:30px">Discovery Itinerary</h3>
         <div id="itinerary-list"></div>
     </div>
 </div>
 
 <script>
-    // --- INSERT YOUR KEYS HERE ---
+    // 1. YOUR API KEYS
     const GEO_KEY = "bb34a64a008b4c2f89ac485d4f09f7c7"; 
     const WEATHER_KEY = "9abae0ecbb13a922770556c822585d1c"; 
 
-    let destData = { name: "", lat: null, lon: null };
+    let selectedDest = { name: "", lat: null, lon: null };
 
-    // 1. Initialize Autocomplete
-    const originAC = new autocomplete.GeocoderAutocomplete(
-        document.getElementById("origin-autocomplete"), GEO_KEY, { placeholder: "Current location...", filter: { countrycode: ["my"] } }
-    );
+    // 2. Wait for page to load before initializing the boxes
+    document.addEventListener("DOMContentLoaded", function() {
+        const originAC = new autocomplete.GeocoderAutocomplete(
+            document.getElementById("origin-autocomplete"), GEO_KEY, 
+            { placeholder: "Current location...", filter: { countrycode: ["my"] } }
+        );
 
-    const destAC = new autocomplete.GeocoderAutocomplete(
-        document.getElementById("destination-autocomplete"), GEO_KEY, { placeholder: "Where to?", filter: { countrycode: ["my"] } }
-    );
+        const destAC = new autocomplete.GeocoderAutocomplete(
+            document.getElementById("destination-autocomplete"), GEO_KEY, 
+            { placeholder: "Where to?", filter: { countrycode: ["my"] } }
+        );
 
-    // Capture destination details when selected
-    destAC.on('select', (location) => {
-        if (!location) return;
-        destData.name = location.properties.city || location.properties.name;
-        destData.lat = location.properties.lat;
-        destData.lon = location.properties.lon;
+        destAC.on('select', (location) => {
+            if (location) {
+                selectedDest.name = location.properties.city || location.properties.name;
+                selectedDest.lat = location.properties.lat;
+                selectedDest.lon = location.properties.lon;
+            }
+        });
     });
 
-    // 2. Main Logic
+    // 3. The "Travel!" Button Function
     async function startJourney() {
-        if (!destData.name || !destData.lat) {
+        if (!selectedDest.name) {
             alert("Please select a destination from the dropdown list!");
             return;
         }
 
         document.getElementById('results').style.display = 'block';
-        document.getElementById('display-name').innerText = destData.name;
-
-        // Call Weather API
-        fetchWeather(destData.lat, destData.lon);
+        document.getElementById('dest-name').innerText = selectedDest.name;
+        
+        fetchWeather(selectedDest.lat, selectedDest.lon);
         renderItinerary();
     }
 
     async function fetchWeather(lat, lon) {
-        const url = `https://api.openweathermap.org/data/3.0/onecall?lat=${lat}&lon=${lon}&exclude=minutely,hourly&units=metric&appid=${WEATHER_KEY}`;
+        // Updated to use a standard current weather fetch for the user's key
+        const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${WEATHER_KEY}`;
         
         try {
-            const response = await fetch(url);
-            const data = await response.json();
+            const res = await fetch(url);
+            const data = await res.json();
             
-            const currentTemp = Math.round(data.current.temp);
-            const condition = data.current.weather[0].main;
-            const willRain = data.daily.slice(0, 7).some(day => day.weather[0].main.includes("Rain"));
-
-            document.getElementById('temp-display').innerText = `${currentTemp}°C`;
-            document.getElementById('weather-desc').innerText = data.current.weather[0].description;
-
-            updatePacking(willRain);
-        } catch (err) {
-            console.error("Weather failed. Check if One Call 3.0 is activated on your key.", err);
-            // Fallback for demo
-            document.getElementById('temp-display').innerText = "27°C";
-            updatePacking(true);
+            document.getElementById('temp-val').innerText = `${Math.round(data.main.temp)}°C`;
+            document.getElementById('weather-text').innerText = data.weather[0].description;
+            
+            const isRainy = data.weather[0].main.includes("Rain");
+            updatePacking(isRainy);
+        } catch (e) {
+            console.error("Weather failed:", e);
         }
     }
 
     function updatePacking(isRainy) {
-        const list = document.getElementById('packing-list');
-        const card = document.getElementById('packing-card');
+        const list = document.getElementById('packing-items');
         let items = ["Breathable clothes", "Power bank", "Sunscreen"];
-
-        if (isRainy) {
-            card.classList.add('rain-alert');
-            items.push("<strong>Umbrella/Raincoat</strong>", "Waterproof bag");
-        } else {
-            card.classList.remove('rain-alert');
-        }
+        if (isRainy) items.push("<strong>Umbrella / Poncho</strong>", "Waterproof bag");
         list.innerHTML = items.map(i => `<li>${i}</li>`).join('');
     }
 
     function renderItinerary() {
-        const items = [
-            { name: "Genting Sempah", desc: "Coffee with a view.", time: "On route" },
-            { name: "Bentong Town", desc: "Famous for ginger and ice cream.", time: "15m detour" }
+        const stops = [
+            { name: "Lemang To'ki", desc: "Best pitstop for bamboo rice.", time: "10m detour" },
+            { name: "Patin Tempoyak Pak Akob", desc: "Famous Pahang fish broth.", time: "5m detour" }
         ];
-        document.getElementById('itinerary-list').innerHTML = items.map(s => `
-            <div class="timeline-item">
-                <p class="stop-name">${s.name}</p>
-                <p class="stop-desc">${s.desc}</p>
-                <small style="color:#999">🕒 ${s.time}</small>
+        document.getElementById('itinerary-list').innerHTML = stops.map(s => `
+            <div style="border-left:2px solid #ddd; padding-left:15px; margin-bottom:20px; position:relative;">
+                <strong>${s.name}</strong><br><small>${s.desc}</small><br>
+                <span style="font-size:0.7rem; color: #aaa;">🕒 ${s.time}</span>
             </div>
         `).join('');
     }
