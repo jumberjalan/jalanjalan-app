@@ -2,184 +2,137 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Smart Traveller App - Malaysia</title>
-    
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.locatecontrol/dist/L.Control.Locate.min.css" />
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Road Trip Discoverer</title>
     <style>
-        :root { --primary: #2c3e50; --food: #e67e22; --fuel: #3498db; --accent: #27ae60; }
-        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; flex-direction: column; height: 100vh; background: #f8f9fa; }
-        header { background: var(--primary); color: white; padding: 12px; text-align: center; font-weight: bold; font-size: 1.2rem; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        :root { --bg: #ffffff; --text: #1a1a1a; --accent: #007aff; --secondary: #f2f2f7; --warn: #ff9500; --danger: #ff3b30; }
+        body { margin: 0; font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+
+        /* Inputs */
+        .search-section { margin-bottom: 30px; border-bottom: 1px solid #eee; padding-bottom: 20px; }
+        input { width: 100%; padding: 14px; border: 1px solid #ddd; border-radius: 12px; margin-bottom: 10px; box-sizing: border-box; font-size: 1rem; background: var(--secondary); border: none; }
+
+        /* Weather & Packing Widget */
+        .dashboard { background: var(--secondary); padding: 20px; border-radius: 20px; margin-bottom: 30px; }
+        .weather-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .temp-val { font-size: 2.5rem; font-weight: 700; }
         
-        #main-container { display: flex; flex-direction: column; flex: 1; overflow: hidden; position: relative; }
-        #map { height: 50vh; width: 100%; z-index: 1; }
-        #list { flex: 1; overflow-y: auto; padding: 15px; background: white; border-top: 3px solid #ddd; }
+        .packing-box { background: #fff; padding: 15px; border-radius: 12px; margin-top: 15px; border-left: 4px solid var(--accent); }
+        .packing-box.rain-alert { border-left-color: var(--danger); }
+        .packing-box h4 { margin: 0 0 8px 0; font-size: 0.9rem; text-transform: uppercase; color: #888; }
+        .packing-list { margin: 0; padding-left: 20px; font-size: 0.9rem; }
 
-        /* Map Controls (Swap/Clear) */
-        .map-controls { position: absolute; top: 10px; left: 50px; z-index: 1000; display: flex; gap: 8px; }
-        .control-btn { background: white; border: 1px solid #ccc; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1); font-size: 14px; }
-        .control-btn:hover { background: #f1f1f1; }
-        .control-btn.clear { color: #e74c3c; }
-
-        /* Filter Buttons */
-        .filter-bar { display: flex; gap: 8px; margin-bottom: 15px; }
-        .filter-btn { flex: 1; padding: 10px; border: none; border-radius: 25px; cursor: pointer; font-weight: bold; font-size: 12px; background: #eee; transition: 0.3s; }
-        .filter-btn.active[data-cat="all"] { background: var(--primary); color: white; }
-        .filter-btn.active[data-cat="food"] { background: var(--food); color: white; }
-        .filter-btn.active[data-cat="fuel"] { background: var(--fuel); color: white; }
-
-        /* Stopover Cards */
-        .card { border: 1px solid #eee; padding: 15px; border-radius: 12px; margin-bottom: 12px; box-shadow: 0 3px 6px rgba(0,0,0,0.05); position: relative; }
-        .card.food { border-left: 6px solid var(--food); }
-        .card.fuel { border-left: 6px solid var(--fuel); }
-        .card h3 { margin: 0 0 5px 0; font-size: 16px; display: flex; align-items: center; gap: 8px; }
-        .card p { margin: 0; color: #666; font-size: 14px; }
-        .nav-btn { display: block; background: var(--accent); color: white; text-align: center; padding: 10px; border-radius: 8px; text-decoration: none; margin-top: 10px; font-weight: bold; transition: 0.2s; }
-        .nav-btn:hover { background: #219150; }
-
-        /* Responsive Layout */
-        @media (min-width: 768px) {
-            #main-container { flex-direction: row; }
-            #map { height: auto; flex: 2; }
-            #list { flex: 1; max-width: 380px; border-top: none; border-left: 1px solid #ddd; }
-        }
+        /* Timeline */
+        .timeline-item { position: relative; padding-left: 30px; border-left: 2px solid var(--secondary); margin-bottom: 35px; }
+        .timeline-item::before { content: ''; position: absolute; left: -6px; top: 5px; width: 10px; height: 10px; background: var(--accent); border-radius: 50%; }
+        .category { font-size: 10px; font-weight: 800; color: var(--accent); letter-spacing: 1px; text-transform: uppercase; }
+        .stop-name { font-size: 1.2rem; font-weight: 700; margin: 4px 0; }
+        .stop-desc { font-size: 0.95rem; color: #555; margin: 0; }
+        .detour { font-size: 0.85rem; color: #999; margin-top: 6px; font-weight: 600; }
     </style>
 </head>
 <body>
 
-<header>MY Smart Travel Route</header>
-
-<div id="main-container">
-    <div class="map-controls">
-        <button class="control-btn" onclick="swapWaypoints()">⇅ Swap</button>
-        <button class="control-btn clear" onclick="clearMap()">✖ Clear</button>
+<div class="container">
+    <div class="search-section">
+        <h1 id="main-title">Start Your Journey</h1>
+        <input type="text" id="originInput" placeholder="Current Location (e.g., Kuala Lumpur)">
+        <input type="text" id="destInput" placeholder="Destination (e.g., Kuantan)" onchange="updateTrip()">
     </div>
 
-    <div id="map"></div>
-    
-    <div id="list">
-        <div class="filter-bar">
-            <button class="filter-btn active" data-cat="all">ALL</button>
-            <button class="filter-btn" data-cat="food">🍴 FOOD</button>
-            <button class="filter-btn" data-cat="fuel">⛽ PETROL</button>
+    <div id="trip-dashboard" style="display: none;">
+        <div class="dashboard">
+            <div class="weather-top">
+                <div>
+                    <h2 id="display-dest" style="margin:0;">Kuantan</h2>
+                    <p id="weather-desc" style="margin:0; color: #666;">Fetch weather...</p>
+                </div>
+                <div class="temp-val" id="temp-display">--°C</div>
+            </div>
+            
+            <div id="packing-container" class="packing-box">
+                <h4>🧳 Smart Packing List</h4>
+                <ul class="packing-list" id="packing-list-items">
+                    </ul>
+            </div>
         </div>
-        <div id="places-container">
-            <p style="text-align: center; color: #888; margin-top: 20px;">Enter a start and destination on the map to see nearby stops.</p>
-        </div>
+
+        <h2 style="font-size: 1.5rem;">Discovery Timeline</h2>
+        <div id="itinerary-list"></div>
     </div>
 </div>
 
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
-<script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/leaflet.locatecontrol/dist/L.Control.Locate.min.js"></script>
-
 <script>
-    // 1. Data Setup
-    const allStops = [
-        { name: "Genting Sempah R&R", lat: 3.3508, lng: 101.7836, cat: "food", desc: "McD, Starbucks, & Restrooms." },
-        { name: "Shell Genting Sempah", lat: 3.3500, lng: 101.7840, cat: "fuel", desc: "Petrol, ATM, and Snacks." },
-        { name: "Lemang To'ki (Bentong)", lat: 3.5235, lng: 101.9164, cat: "food", desc: "Famous detour for Lemang." },
-        { name: "Petronas Bentong", lat: 3.5200, lng: 101.9100, cat: "fuel", desc: "Fuel & NGV station." },
-        { name: "Temerloh R&R", lat: 3.4475, lng: 102.4173, cat: "food", desc: "Great local Pahang food." },
-        { name: "Rawang R&R", lat: 3.3323, lng: 101.5724, cat: "food", desc: "Major stop for North-bound." },
-        { name: "Seremban R&R", lat: 2.7032, lng: 101.9126, cat: "food", desc: "Major stop for South-bound." }
+    const apiKey = "YOUR_OPENWEATHER_API_KEY"; // Replace with your free key from openweathermap.org
+
+    const discoveryGems = [
+        { name: "Genting Sempah Lookout", cat: "Nature", desc: "Catch the mountain mist. Great coffee stop.", detour: "On Route" },
+        { name: "Lemang To'ki Bentong", cat: "Foodie", desc: "Famous charcoal-fired Lemang & Rendang.", detour: "10 mins off highway" },
+        { name: "Elephant Sanctuary Kuala Gandah", cat: "Wildlife", desc: "Rescue center for elephants. Family friendly.", detour: "15 mins off highway" },
+        { name: "Patin Tempoyak Temerloh", cat: "Foodie", desc: "Pahang's famous fermented durian fish broth.", detour: "5 mins off highway" }
     ];
 
-    let currentCategory = "all";
-    let activeRouteCoords = [];
+    async function updateTrip() {
+        const dest = document.getElementById('destInput').value;
+        if (!dest) return;
 
-    // 2. Map & Routing Initialization
-    var map = L.map('map').setView([3.3, 101.9], 9);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
-    }).addTo(map);
+        document.getElementById('trip-dashboard').style.display = 'block';
+        document.getElementById('display-dest').innerText = dest;
+        document.getElementById('main-title').innerText = "Trip to " + dest;
 
-    var markersLayer = L.layerGroup().addTo(map);
-
-    var control = L.Routing.control({
-        waypoints: [null, null], // Starts empty
-        routeWhileDragging: true,
-        geocoder: L.Control.Geocoder.nominatim(),
-        lineOptions: { styles: [{ color: '#3498db', weight: 6 }] }
-    }).addTo(map);
-
-    L.control.locate({ position: 'topleft' }).addTo(map);
-
-    // 3. Update List when Route is Found
-    control.on('routesfound', function(e) {
-        activeRouteCoords = e.routes[0].coordinates;
-        filterAndDisplay();
-    });
-
-    // 4. Filtering Logic
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelector('.filter-btn.active').classList.remove('active');
-            btn.classList.add('active');
-            currentCategory = btn.getAttribute('data-cat');
-            filterAndDisplay();
-        });
-    });
-
-    function filterAndDisplay() {
-        if (!activeRouteCoords.length) return;
-
-        const filtered = allStops.filter(stop => {
-            const matchesCat = (currentCategory === "all" || stop.cat === currentCategory);
-            // Check if stop is within ~5km of the route
-            const matchesRoute = activeRouteCoords.some(coord => {
-                let dist = Math.sqrt(Math.pow(coord.lat - stop.lat, 2) + Math.pow(coord.lng - stop.lng, 2));
-                return dist < 0.05; 
-            });
-            return matchesCat && matchesRoute;
-        });
-
-        updateUI(filtered);
+        fetchWeather(dest);
+        renderItinerary();
     }
 
-    function updateUI(stops) {
-        const container = document.getElementById('places-container');
-        container.innerHTML = ""; 
-        markersLayer.clearLayers();
+    async function fetchWeather(city) {
+        try {
+            // Using a sample for demo, replace URL with real API call when key is ready:
+            // const url = `https://api.openweathermap.org/data/2.5/forecast?q=${city}&units=metric&appid=${apiKey}`;
+            
+            // Mock Data for demonstration
+            const mockData = {
+                temp: 27,
+                desc: "Cloudy with Light Rain",
+                willRain: true // In a real API, you'd check if 'Rain' exists in forecast array
+            };
 
-        if (stops.length === 0) {
-            container.innerHTML = '<p style="text-align: center; color: #888;">No matching stops found along this route.</p>';
-            return;
-        }
+            document.getElementById('temp-display').innerText = `${mockData.temp}°C`;
+            document.getElementById('weather-desc').innerText = mockData.desc;
 
-        stops.forEach(stop => {
-            const icon = stop.cat === 'food' ? '🍴' : '⛽';
-            const card = document.createElement('div');
-            card.className = `card ${stop.cat}`;
-            card.innerHTML = `
-                <h3>${icon} ${stop.name}</h3>
-                <p>${stop.desc}</p>
-                <a href="https://www.google.com/maps/dir/?api=1&destination=${stop.lat},${stop.lng}" target="_blank" class="nav-btn">NAVIGATE TO STOP</a>
-            `;
-            container.appendChild(card);
-            L.marker([stop.lat, stop.lng]).addTo(markersLayer).bindPopup(stop.name);
-        });
-    }
-
-    // 5. Swap & Clear Functions
-    function swapWaypoints() {
-        var wp = control.getWaypoints();
-        if (wp[0].latLng && wp[1].latLng) {
-            control.setWaypoints([wp[1].latLng, wp[0].latLng]);
+            updatePackingList(mockData.willRain);
+        } catch (error) {
+            console.error("Weather fetch failed", error);
         }
     }
 
-    function clearMap() {
-        control.setWaypoints([null, null]);
-        activeRouteCoords = [];
-        markersLayer.clearLayers();
-        document.getElementById('places-container').innerHTML = '<p style="text-align: center; color: #888; margin-top: 20px;">Enter a start and destination on the map to see nearby stops.</p>';
-        map.setView([3.3, 101.9], 9);
+    function updatePackingList(isRaining) {
+        const list = document.getElementById('packing-list-items');
+        const box = document.getElementById('packing-container');
+        
+        let items = ["Light cotton clothing", "Power bank", "Sunscreen"];
+        
+        if (isRaining) {
+            box.classList.add('rain-alert');
+            items.push("<strong>Umbrella or Raincoat (Rain Forecasted)</strong>");
+            items.push("Waterproof bag for phone");
+        } else {
+            box.classList.remove('rain-alert');
+        }
+
+        list.innerHTML = items.map(i => `<li>${i}</li>`).join('');
+    }
+
+    function renderItinerary() {
+        const list = document.getElementById('itinerary-list');
+        list.innerHTML = discoveryGems.map(stop => `
+            <div class="timeline-item">
+                <div class="category">${stop.cat}</div>
+                <div class="stop-name">${stop.name}</div>
+                <p class="stop-desc">${stop.desc}</p>
+                <div class="detour">🕒 ${stop.detour}</div>
+            </div>
+        `).join('');
     }
 </script>
 
