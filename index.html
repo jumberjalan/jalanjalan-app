@@ -3,72 +3,107 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Road Trip Discoverer</title>
-    
-    <link rel="stylesheet" href="https://unpkg.com/@geoapify/geocoder-autocomplete@1.6.0/styles/minimal.css">
-
+    <title>Road Trip - Manual Control</title>
     <style>
-        body { font-family: -apple-system, sans-serif; background: #f4f4f7; padding: 20px; display: flex; justify-content: center; }
-        .card { background: white; padding: 25px; border-radius: 15px; width: 100%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
-        .autocomplete-container { position: relative; margin-bottom: 20px; min-height: 45px; border: 1px solid #ddd; border-radius: 8px; }
-        .travel-btn { width: 100%; padding: 15px; background: #007aff; color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }
-        label { font-size: 12px; color: #888; margin-bottom: 5px; display: block; }
+        :root { --accent: #007aff; }
+        body { font-family: -apple-system, sans-serif; background: #f2f2f7; padding: 20px; display: flex; justify-content: center; }
+        .card { background: white; padding: 25px; border-radius: 15px; width: 100%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        
+        .input-group { margin-bottom: 20px; position: relative; }
+        label { font-size: 11px; font-weight: bold; color: #888; text-transform: uppercase; display: block; margin-bottom: 5px; }
+        
+        /* Standard input that is NOT controlled by a heavy library */
+        input { 
+            width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; 
+            font-size: 16px; box-sizing: border-box; outline: none;
+        }
+        input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,122,255,0.1); }
+
+        /* The suggestion list */
+        .results-list { 
+            position: absolute; background: white; width: 100%; z-index: 1000; 
+            border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); 
+            max-height: 200px; overflow-y: auto; display: none; margin-top: 5px;
+        }
+        .result-item { padding: 12px; font-size: 14px; border-bottom: 1px solid #eee; cursor: pointer; }
+        .result-item:hover { background: #f9f9f9; }
+
+        .btn { width: 100%; padding: 16px; background: var(--accent); color: white; border: none; border-radius: 12px; font-weight: bold; font-size: 16px; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2>Where to?</h2>
-    
-    <label>FROM</label>
-    <div id="origin-box" class="autocomplete-container"></div>
-    
-    <label>TO</label>
-    <div id="destination-box" class="autocomplete-container"></div>
-    
-    <button class="travel-btn" onclick="startTrip()">Travel!</button>
+    <h2 style="margin-top:0">Plan Trip</h2>
+
+    <div class="input-group">
+        <label>From</label>
+        <input type="text" id="start-input" placeholder="Enter start city..." autocomplete="off">
+        <div id="start-results" class="results-list"></div>
+    </div>
+
+    <div class="input-group">
+        <label>To</label>
+        <input type="text" id="end-input" placeholder="Enter destination..." autocomplete="off">
+        <div id="end-results" class="results-list"></div>
+    </div>
+
+    <button class="btn" onclick="startJourney()">Travel!</button>
 </div>
 
-<script defer src="https://unpkg.com/@geoapify/geocoder-autocomplete@1.6.0/dist/index.bundle.min.js"></script>
-
 <script>
-    // Replace with your key
-    const KEY = "bb34a64a008b4c2f89ac485d4f09f7c7"; 
-    let startLoc = "", endLoc = "";
+    const API_KEY = "bb34a64a008b4c2f89ac485d4f09f7c7";
 
-    // This function checks every 500ms if the library has arrived
-    const checkLibrary = setInterval(() => {
-        if (typeof autocomplete !== 'undefined') {
-            clearInterval(checkLibrary);
-            initInputs();
-        }
-    }, 500);
+    // Attach search logic to both inputs
+    setupAutocomplete('start-input', 'start-results');
+    setupAutocomplete('end-input', 'end-results');
 
-    function initInputs() {
-        const origin = new autocomplete.GeocoderAutocomplete(
-            document.getElementById("origin-box"), KEY, { placeholder: "Start...", filter: {countrycode: ["my"]} }
-        );
-        const dest = new autocomplete.GeocoderAutocomplete(
-            document.getElementById("destination-box"), KEY, { placeholder: "End...", filter: {countrycode: ["my"]} }
-        );
+    function setupAutocomplete(inputId, resultsId) {
+        const input = document.getElementById(inputId);
+        const results = document.getElementById(resultsId);
 
-        origin.on('select', (loc) => { if(loc) startLoc = loc.properties.formatted; });
-        dest.on('select', (loc) => { if(loc) endLoc = loc.properties.formatted; });
+        input.addEventListener('input', async (e) => {
+            const val = e.target.value;
+            if (val.length < 3) { results.style.display = 'none'; return; }
+
+            // Fetch suggestions manually from Geoapify
+            const url = `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(val)}&filter=countrycode:my&limit=5&apiKey=${API_KEY}`;
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.features.length > 0) {
+                    results.innerHTML = data.features.map(f => `
+                        <div class="result-item" onclick="selectItem('${inputId}', '${resultsId}', '${f.properties.formatted.replace(/'/g, "\\'")}')">
+                            ${f.properties.formatted}
+                        </div>
+                    `).join('');
+                    results.style.display = 'block';
+                }
+            } catch (err) {
+                console.error("Search error:", err);
+            }
+        });
     }
 
-    function startTrip() {
-        // Fallback: If the user typed manually without selecting from dropdown
-        const manualStart = document.querySelector("#origin-box input")?.value;
-        const manualEnd = document.querySelector("#destination-box input")?.value;
+    function selectItem(inputId, resultsId, value) {
+        document.getElementById(inputId).value = value;
+        document.getElementById(resultsId).style.display = 'none';
+    }
 
-        const finalStart = startLoc || manualStart;
-        const finalEnd = endLoc || manualEnd;
-
-        if (!finalStart || !finalEnd) {
-            alert("Please enter both locations!");
-        } else {
-            alert("Trip planned from " + finalStart + " to " + finalEnd);
+    // Hide suggestions when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.input-group')) {
+            document.querySelectorAll('.results-list').forEach(l => l.style.display = 'none');
         }
+    });
+
+    function startJourney() {
+        const s = document.getElementById('start-input').value;
+        const e = document.getElementById('end-input').value;
+        if(s && e) alert(`Driving from ${s} to ${e}!`);
+        else alert("Please fill both fields.");
     }
 </script>
 
