@@ -2,65 +2,63 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Basic Travel Inputs</title>
+    <title>Fixed Travel Inputs</title>
     
-    <link rel="stylesheet" href="https://unpkg.com/@geoapify/geocoder-autocomplete@^1/styles/minimal.css">
-    <script src="https://unpkg.com/@geoapify/geocoder-autocomplete@^1/dist/index.bundle.min.js"></script>
-
+    <link rel="stylesheet" href="https://unpkg.com/@geoapify/geocoder-autocomplete@1.6.0/styles/minimal.css">
+    
     <style>
-        body { font-family: sans-serif; padding: 40px; background: #f4f4f9; }
-        .form-card { background: white; padding: 20px; border-radius: 12px; max-width: 400px; margin: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        
-        /* IMPORTANT: The containers must have relative positioning */
-        .autocomplete-container { position: relative; margin-bottom: 20px; height: 45px; }
-        
-        .travel-btn { 
-            width: 100%; padding: 15px; background: #007aff; color: white; 
-            border: none; border-radius: 8px; font-weight: bold; cursor: pointer; 
-        }
-        label { display: block; margin-bottom: 5px; font-size: 0.8rem; color: #666; font-weight: bold; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica; padding: 20px; background: #f0f2f5; }
+        .card { background: white; padding: 25px; border-radius: 15px; max-width: 400px; margin: 40px auto; box-shadow: 0 8px 30px rgba(0,0,0,0.1); }
+        .autocomplete-container { position: relative; margin-bottom: 20px; min-height: 45px; }
+        .travel-btn { width: 100%; padding: 15px; background: #007aff; color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 1rem; }
+        label { display: block; margin-bottom: 8px; font-size: 0.75rem; color: #888; letter-spacing: 0.5px; }
+        h2 { margin-top: 0; color: #1c1c1e; }
     </style>
 </head>
 <body>
 
-<div class="form-card">
-    <h2>Where to?</h2>
+<div class="card">
+    <h2>Road Trip</h2>
 
-    <label>FROM</label>
+    <label>STARTING FROM</label>
     <div id="origin-box" class="autocomplete-container"></div>
     
-    <label>TO</label>
+    <label>DESTINATION</label>
     <div id="destination-box" class="autocomplete-container"></div>
     
-    <button class="travel-btn" onclick="checkInputs()">Travel!</button>
+    <button class="travel-btn" onclick="checkJourney()">Travel!</button>
 </div>
 
-<script>
-    // Replace with your actual key
-    const MY_API_KEY = "bb34a64a008b4c2f89ac485d4f09f7c7"; 
+<script src="https://unpkg.com/@geoapify/geocoder-autocomplete@1.6.0/dist/index.bundle.min.js"></script>
 
-    // Variables to store what the user picks
+<script>
+    const MY_API_KEY = "bb34a64a008b4c2f89ac485d4f09f7c7"; 
     let startPoint = "";
     let endPoint = "";
 
-    // 2. Initialize the fields only AFTER the page loads
-    window.onload = function() {
+    // This waits for the library and the page to be 100% ready
+    window.addEventListener('load', function() {
         
-        // Setup Origin Field
+        // Safety Check: Verify if library loaded
+        if (typeof autocomplete === 'undefined') {
+            console.error("The Geoapify library failed to load. Check your internet.");
+            return;
+        }
+
+        // Initialize Origin
         const originField = new autocomplete.GeocoderAutocomplete(
             document.getElementById("origin-box"), 
             MY_API_KEY, 
-            { placeholder: "Type starting city...", filter: { countrycode: ["my"] } }
+            { placeholder: "Search starting city...", filter: { countrycode: ["my"] } }
         );
 
-        // Setup Destination Field
+        // Initialize Destination
         const destinationField = new autocomplete.GeocoderAutocomplete(
             document.getElementById("destination-box"), 
             MY_API_KEY, 
-            { placeholder: "Type destination...", filter: { countrycode: ["my"] } }
+            { placeholder: "Search destination...", filter: { countrycode: ["my"] } }
         );
 
-        // Listen for selections
         originField.on('select', (location) => {
             if (location) startPoint = location.properties.formatted;
         });
@@ -68,13 +66,13 @@
         destinationField.on('select', (location) => {
             if (location) endPoint = location.properties.formatted;
         });
-    };
+    });
 
-    function checkInputs() {
+    function checkJourney() {
         if (!startPoint || !endPoint) {
-            alert("Please pick both locations from the suggestion list!");
+            alert("Please select locations from the dropdown menu!");
         } else {
-            alert("Ready to go from " + startPoint + " to " + endPoint + "!");
+            alert("Success! Starting from: " + startPoint + "\nEnding at: " + endPoint);
         }
     }
 </script>
