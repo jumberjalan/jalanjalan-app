@@ -2,63 +2,87 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Fixed Travel Inputs</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Road Trip - Basic Setup</title>
     
-    <link rel="stylesheet" href="https://unpkg.com/@geoapify/geocoder-autocomplete@1.6.0/styles/minimal.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@geoapify/geocoder-autocomplete@1.6.0/styles/minimal.css">
     
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica; padding: 20px; background: #f0f2f5; }
-        .card { background: white; padding: 25px; border-radius: 15px; max-width: 400px; margin: 40px auto; box-shadow: 0 8px 30px rgba(0,0,0,0.1); }
-        .autocomplete-container { position: relative; margin-bottom: 20px; min-height: 45px; }
-        .travel-btn { width: 100%; padding: 15px; background: #007aff; color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 1rem; }
-        label { display: block; margin-bottom: 8px; font-size: 0.75rem; color: #888; letter-spacing: 0.5px; }
-        h2 { margin-top: 0; color: #1c1c1e; }
+        body { font-family: -apple-system, sans-serif; background: #f5f5f7; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: white; padding: 30px; border-radius: 18px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 100%; max-width: 380px; }
+        
+        /* Forces the search containers to be visible */
+        .autocomplete-container { 
+            position: relative; 
+            margin-bottom: 20px; 
+            min-height: 45px; 
+            border: 1px solid #d2d2d7;
+            border-radius: 8px;
+            background: #fff;
+        }
+
+        .input-label { font-size: 11px; font-weight: 700; color: #86868b; margin-bottom: 6px; display: block; text-transform: uppercase; }
+        
+        .travel-btn { 
+            width: 100%; padding: 16px; background: #007aff; color: white; 
+            border: none; border-radius: 12px; font-size: 17px; font-weight: 600; 
+            cursor: pointer; margin-top: 10px;
+        }
+        .travel-btn:active { transform: scale(0.98); opacity: 0.9; }
+
+        #loading-msg { font-size: 12px; color: #ff9500; text-align: center; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2>Road Trip</h2>
+    <div id="loading-msg">Connecting to Malaysia Maps...</div>
+    <h2 style="margin-top: 0;">Where to?</h2>
 
-    <label>STARTING FROM</label>
+    <label class="input-label">Starting Location</label>
     <div id="origin-box" class="autocomplete-container"></div>
     
-    <label>DESTINATION</label>
+    <label class="input-label">Final Destination</label>
     <div id="destination-box" class="autocomplete-container"></div>
     
     <button class="travel-btn" onclick="checkJourney()">Travel!</button>
 </div>
 
-<script src="https://unpkg.com/@geoapify/geocoder-autocomplete@1.6.0/dist/index.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@geoapify/geocoder-autocomplete@1.6.0/dist/index.bundle.min.js"></script>
 
 <script>
+    // --- API CONFIG ---
     const MY_API_KEY = "bb34a64a008b4c2f89ac485d4f09f7c7"; 
     let startPoint = "";
     let endPoint = "";
 
-    // This waits for the library and the page to be 100% ready
-    window.addEventListener('load', function() {
+    // This ensures the library is ready before building the boxes
+    window.onload = function() {
         
-        // Safety Check: Verify if library loaded
         if (typeof autocomplete === 'undefined') {
-            console.error("The Geoapify library failed to load. Check your internet.");
+            document.getElementById('loading-msg').innerText = "❌ Map Error: Please check internet/VPN.";
+            document.getElementById('loading-msg').style.color = "red";
             return;
         }
 
-        // Initialize Origin
+        // Remove loading message once library is confirmed
+        document.getElementById('loading-msg').style.display = 'none';
+
+        // Setup "From" box
         const originField = new autocomplete.GeocoderAutocomplete(
             document.getElementById("origin-box"), 
             MY_API_KEY, 
-            { placeholder: "Search starting city...", filter: { countrycode: ["my"] } }
+            { placeholder: "Type city (e.g. KL)", filter: { countrycode: ["my"] } }
         );
 
-        // Initialize Destination
+        // Setup "To" box
         const destinationField = new autocomplete.GeocoderAutocomplete(
             document.getElementById("destination-box"), 
             MY_API_KEY, 
-            { placeholder: "Search destination...", filter: { countrycode: ["my"] } }
+            { placeholder: "Type city (e.g. Kuantan)", filter: { countrycode: ["my"] } }
         );
 
+        // Listen for when a user clicks a suggestion
         originField.on('select', (location) => {
             if (location) startPoint = location.properties.formatted;
         });
@@ -66,13 +90,13 @@
         destinationField.on('select', (location) => {
             if (location) endPoint = location.properties.formatted;
         });
-    });
+    };
 
     function checkJourney() {
         if (!startPoint || !endPoint) {
-            alert("Please select locations from the dropdown menu!");
+            alert("Please pick both locations from the suggestion list!");
         } else {
-            alert("Success! Starting from: " + startPoint + "\nEnding at: " + endPoint);
+            alert("Ready! Drive from " + startPoint + " to " + endPoint);
         }
     }
 </script>
